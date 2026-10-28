@@ -1,367 +1,235 @@
 
-"use strict";
-
-// 1. Get references to HTML elements
 const studentForm = document.getElementById("studentForm");
-const rollNumberInput = document.getElementById("rollNumber");
-const studentNameInput = document.getElementById("studentName");
+const rollInput = document.getElementById("rollNumber");
+const nameInput = document.getElementById("studentName");
 const departmentInput = document.getElementById("department");
 
-const studentTableBody = document.getElementById("studentTableBody");
-const recordCount = document.getElementById("recordCount");
+const studentTable = document.getElementById("studentTable");
+const searchInput = document.getElementById("searchInput");
 const message = document.getElementById("message");
 
-const formTitle = document.getElementById("formTitle");
-const submitButton = document.getElementById("submitButton");
-const cancelButton = document.getElementById("cancelButton");
+const submitBtn = document.getElementById("submitBtn");
+const cancelBtn = document.getElementById("cancelBtn");
 
-// 2. Define the localStorage key
-const STORAGE_KEY = "studentRecords";
+let students = JSON.parse(localStorage.getItem("campusStudents")) || [];
+let editingRoll = null;
 
-// 3. Store student records in an array
-let students = [];
-let editingRollNumber = null;
-
-
-// 4. Load existing records from localStorage
-function loadStudents() {
-    try {
-        const savedRecords = localStorage.getItem(STORAGE_KEY);
-
-        if (savedRecords === null) {
-            students = [];
-            return;
-        }
-
-        const parsedRecords = JSON.parse(savedRecords);
-
-        if (
-            !Array.isArray(parsedRecords) ||
-            !parsedRecords.every(student =>
-                student &&
-                typeof student.rollNumber === "string" &&
-                typeof student.name === "string" &&
-                typeof student.department === "string"
-            )
-        ) {
-            throw new Error("Invalid student data");
-        }
-
-        // Remove duplicate roll numbers from malformed stored data.
-        const uniqueStudents = new Map();
-
-        parsedRecords.forEach(student => {
-            const roll = student.rollNumber.trim();
-
-            if (roll !== "") {
-                const key = roll.toLowerCase();
-
-                if (!uniqueStudents.has(key)) {
-                    uniqueStudents.set(key, {
-                        rollNumber: roll,
-                        name: student.name.trim(),
-                        department: student.department.trim()
-                    });
-                }
-            }
-        });
-
-        students = Array.from(uniqueStudents.values());
-
-    } catch (error) {
-        console.error("Unable to load student records:", error);
-        students = [];
-
-        showMessage(
-            "Saved data could not be read. Please check browser storage.",
-            "error"
-        );
-    }
+// Save student records in browser storage
+function saveData() {
+    localStorage.setItem("campusStudents", JSON.stringify(students));
 }
 
-
-// 5. Save records to localStorage
-function saveStudents() {
-    try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(students));
-        return true;
-    } catch (error) {
-        console.error("Unable to save student records:", error);
-
-        showMessage(
-            "Unable to save records. Check browser storage space or permissions.",
-            "error"
-        );
-
-        return false;
-    }
-}
-
-
-// 6. Display success or error messages
-function showMessage(text, type) {
+// Display success or error message
+function showMessage(text, color = "#16845c") {
     message.textContent = text;
-    message.className = type;
+    message.style.color = color;
 }
 
-
-// 7. Display all student records in the table
-function displayStudents() {
-    // Clear the old table rows
-    studentTableBody.replaceChildren();
-
-    // Update the total number of students
-    recordCount.textContent = `Total Students: ${students.length}`;
-
-    // Display a message when no records exist
-    if (students.length === 0) {
-        const row = document.createElement("tr");
-        const cell = document.createElement("td");
-
-        cell.colSpan = 4;
-        cell.className = "empty-message";
-        cell.textContent = "No student records found.";
-
-        row.appendChild(cell);
-        studentTableBody.appendChild(row);
-        return;
-    }
-
-    // Create a table row for each student
-    students.forEach(student => {
-        const row = document.createElement("tr");
-
-        const rollCell = document.createElement("td");
-        rollCell.textContent = student.rollNumber;
-
-        const nameCell = document.createElement("td");
-        nameCell.textContent = student.name;
-
-        const departmentCell = document.createElement("td");
-        departmentCell.textContent = student.department;
-
-        const actionCell = document.createElement("td");
-        const actionButtons = document.createElement("div");
-
-        actionButtons.className = "action-buttons";
-
-        // Create Edit button
-        const editButton = document.createElement("button");
-        editButton.type = "button";
-        editButton.className = "edit-button";
-        editButton.textContent = "Edit";
-
-        editButton.addEventListener("click", () => {
-            editStudent(student.rollNumber);
-        });
-
-        // Create Delete button
-        const deleteButton = document.createElement("button");
-        deleteButton.type = "button";
-        deleteButton.className = "delete-button";
-        deleteButton.textContent = "Delete";
-
-        deleteButton.addEventListener("click", () => {
-            deleteStudent(student.rollNumber);
-        });
-
-        actionButtons.append(editButton, deleteButton);
-        actionCell.appendChild(actionButtons);
-
-        row.append(
-            rollCell,
-            nameCell,
-            departmentCell,
-            actionCell
-        );
-
-        studentTableBody.appendChild(row);
-    });
-}
-
-
-// 8. Check whether a roll number already exists
-function rollNumberExists(rollNumber, excludeRollNumber = null) {
-    const newKey = rollNumber.trim().toLowerCase();
-    const excludedKey = excludeRollNumber === null
-        ? null
-        : excludeRollNumber.trim().toLowerCase();
-
-    return students.some(student => {
-        const existingKey = student.rollNumber.trim().toLowerCase();
-
-        return existingKey === newKey && existingKey !== excludedKey;
-    });
-}
-
-
-// 9. Handle adding a new student or updating an existing student
+// Add or update student
 studentForm.addEventListener("submit", function (event) {
-    // Prevent the page from refreshing
     event.preventDefault();
 
-    const rollNumber = rollNumberInput.value.trim();
-    const name = studentNameInput.value.trim();
-    const department = departmentInput.value.trim();
+    const roll = rollInput.value.trim();
+    const name = nameInput.value.trim();
+    const department = departmentInput.value;
 
-    // Validate required fields, including whitespace-only input
-    if (!rollNumber || !name || !department) {
-        showMessage("Please fill in all three fields.", "error");
+    if (!roll || !name || !department) {
+        showMessage("Please fill in all fields.", "#d44242");
         return;
     }
 
     // Prevent duplicate roll numbers
-    if (rollNumberExists(rollNumber, editingRollNumber)) {
-        showMessage(
-            "This roll number already exists. Please enter a unique roll number.",
-            "error"
-        );
+    const duplicate = students.some(function (student) {
+        return student.roll.toLowerCase() === roll.toLowerCase()
+            && student.roll !== editingRoll;
+    });
+
+    if (duplicate) {
+        showMessage("This roll number already exists.", "#d44242");
         return;
     }
 
-    // Create the student object
-    const student = {
-        rollNumber: rollNumber,
-        name: name,
-        department: department
-    };
+    if (editingRoll !== null) {
+        // UPDATE operation
+        students = students.map(function (student) {
+            if (student.roll === editingRoll) {
+                return {
+                    roll: roll,
+                    name: name,
+                    department: department
+                };
+            }
+            return student;
+        });
 
-    // Update an existing student
-    if (editingRollNumber !== null) {
-        const index = students.findIndex(
-            item => item.rollNumber === editingRollNumber
-        );
-
-        if (index === -1) {
-            showMessage(
-                "The student record could not be found. Please try again.",
-                "error"
-            );
-            resetForm();
-            return;
-        }
-
-        const oldStudent = students[index];
-        students[index] = student;
-
-        if (!saveStudents()) {
-            students[index] = oldStudent;
-            return;
-        }
-
-        showMessage("Student record updated successfully.", "success");
-
+        showMessage("Student details updated successfully!");
     } else {
-        // Add a new student
-        students.push(student);
+        // CREATE operation
+        students.push({
+            roll: roll,
+            name: name,
+            department: department
+        });
 
-        if (!saveStudents()) {
-            students.pop();
-            return;
-        }
-
-        showMessage("Student added successfully.", "success");
+        showMessage("Student registered successfully!");
     }
 
-    // Refresh the table and clear the form
-    displayStudents();
+    saveData();
+    renderStudents();
     resetForm();
 });
 
+// Display student records
+function renderStudents() {
+    const keyword = searchInput.value.trim().toLowerCase();
 
-// 10. Load a student's details into the form for editing
-function editStudent(rollNumber) {
-    const student = students.find(
-        item => item.rollNumber === rollNumber
-    );
+    const filteredStudents = students.filter(function (student) {
+        return student.roll.toLowerCase().includes(keyword)
+            || student.name.toLowerCase().includes(keyword)
+            || student.department.toLowerCase().includes(keyword);
+    });
 
-    if (!student) {
-        showMessage("Student record not found.", "error");
-        return;
+    studentTable.innerHTML = "";
+
+    if (filteredStudents.length === 0) {
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+
+        cell.colSpan = 4;
+        cell.className = "empty";
+        cell.textContent = students.length === 0
+            ? "No records yet. Register your first student!"
+            : "No matching students found.";
+
+        row.appendChild(cell);
+        studentTable.appendChild(row);
+    } else {
+        filteredStudents.forEach(function (student) {
+            const row = document.createElement("tr");
+
+            const rollCell = document.createElement("td");
+            rollCell.className = "student-roll";
+            rollCell.textContent = student.roll;
+
+            const nameCell = document.createElement("td");
+            nameCell.className = "student-name";
+            nameCell.textContent = student.name;
+
+            const departmentCell = document.createElement("td");
+            const badge = document.createElement("span");
+            badge.className = "dept-badge";
+            badge.textContent = student.department;
+            departmentCell.appendChild(badge);
+
+            const actionsCell = document.createElement("td");
+
+            const editButton = document.createElement("button");
+            editButton.className = "action-btn edit-btn";
+            editButton.textContent = "Edit";
+            editButton.addEventListener("click", function () {
+                editStudent(student.roll);
+            });
+
+            const deleteButton = document.createElement("button");
+            deleteButton.className = "action-btn delete-btn";
+            deleteButton.textContent = "Delete";
+            deleteButton.addEventListener("click", function () {
+                deleteStudent(student.roll);
+            });
+
+            actionsCell.append(editButton, deleteButton);
+            row.append(
+                rollCell,
+                nameCell,
+                departmentCell,
+                actionsCell
+            );
+
+            studentTable.appendChild(row);
+        });
     }
 
-    rollNumberInput.value = student.rollNumber;
-    studentNameInput.value = student.name;
+    // Update dashboard statistics
+    document.getElementById("totalStudents").textContent = students.length;
+
+    const departments = [...new Set(
+        students.map(function (student) {
+            return student.department;
+        })
+    )];
+
+    document.getElementById("totalDepartments").textContent =
+        departments.length;
+
+    document.getElementById("recordCount").textContent =
+        students.length + (students.length === 1 ? " record" : " records");
+}
+
+// Edit existing student
+function editStudent(roll) {
+    const student = students.find(function (item) {
+        return item.roll === roll;
+    });
+
+    if (!student) return;
+
+    editingRoll = student.roll;
+
+    rollInput.value = student.roll;
+    nameInput.value = student.name;
     departmentInput.value = student.department;
 
-    editingRollNumber = student.rollNumber;
+    document.getElementById("formTitle").textContent = "Edit Student";
+    submitBtn.textContent = "Update Student";
+    cancelBtn.hidden = false;
 
-    formTitle.textContent = "Edit Student";
-    submitButton.textContent = "Update Student";
-    cancelButton.hidden = false;
+    showMessage("Editing student: " + student.name, "#176fc0");
 
-    showMessage("Edit the details and click Update Student.", "success");
-
-    // Bring the form into view
-    studentForm.scrollIntoView({
+    document.getElementById("student-form").scrollIntoView({
         behavior: "smooth",
         block: "start"
     });
-
-    rollNumberInput.focus();
 }
 
-
-// 11. Delete a student after confirmation
-function deleteStudent(rollNumber) {
-    const student = students.find(
-        item => item.rollNumber === rollNumber
+// Delete student
+function deleteStudent(roll) {
+    const confirmed = confirm(
+        "Are you sure you want to delete student " + roll + "?"
     );
 
-    if (!student) {
-        showMessage("Student record not found.", "error");
-        return;
-    }
+    if (!confirmed) return;
 
-    const confirmed = window.confirm(
-        `Are you sure you want to delete ${student.name} ` +
-        `(Roll Number: ${student.rollNumber})?`
-    );
+    students = students.filter(function (student) {
+        return student.roll !== roll;
+    });
 
-    // Stop if the user cancels
-    if (!confirmed) {
-        return;
-    }
-
-    const previousStudents = [...students];
-
-    students = students.filter(
-        item => item.rollNumber !== rollNumber
-    );
-
-    if (!saveStudents()) {
-        students = previousStudents;
-        return;
-    }
-
-    // If the deleted record is being edited, clear the form
-    if (editingRollNumber === rollNumber) {
+    if (editingRoll === roll) {
         resetForm();
     }
 
-    displayStudents();
-    showMessage("Student deleted successfully.", "success");
+    saveData();
+    renderStudents();
+    showMessage("Student record deleted successfully!");
 }
 
-
-// 12. Reset the form after adding, updating or cancelling
+// Reset form
 function resetForm() {
     studentForm.reset();
-    editingRollNumber = null;
+    editingRoll = null;
 
-    formTitle.textContent = "Add Student";
-    submitButton.textContent = "Add Student";
-    cancelButton.hidden = true;
+    document.getElementById("formTitle").textContent = "Register Student";
+    submitBtn.textContent = "Save Student";
+    cancelBtn.hidden = true;
 }
 
-
-// Cancel the edit operation
-cancelButton.addEventListener("click", function () {
+// Cancel edit
+cancelBtn.addEventListener("click", function () {
     resetForm();
-    showMessage("Edit cancelled.", "success");
+    showMessage("Edit cancelled.");
 });
 
+// Search records
+searchInput.addEventListener("input", renderStudents);
 
-// 13. Start the application
-loadStudents();
-displayStudents();
+// Load saved records when the page opens
+renderStudents();

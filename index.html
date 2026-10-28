@@ -4,111 +4,141 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>Student Record Management System</title>
-
-    <!-- Connect the CSS file -->
+    <title>CampusTrack - Student Dashboard</title>
     <link rel="stylesheet" href="style.css">
-
-    <!-- Connect the JavaScript file -->
     <script src="script.js" defer></script>
 </head>
 <body>
 
-    <div class="container">
+    <aside class="sidebar">
+        <div class="brand">Campus<span>Track</span></div>
+        <p class="menu-title">MAIN MENU</p>
+        <a href="#" class="menu active">▦ &nbsp; Dashboard</a>
+        <a href="#student-form" class="menu">＋ &nbsp; Add Student</a>
+        <a href="#records" class="menu">☷ &nbsp; Student Records</a>
 
-        <header class="page-header">
-            <h1>Student Record Management System</h1>
-            <p>Manage student details easily and efficiently.</p>
+        <div class="sidebar-bottom">
+            <div class="avatar">ST</div>
+            <div>
+                <strong>Student Portal</strong>
+                <small>Management System</small>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <header class="topbar">
+            <div>
+                <p class="eyebrow">OVERVIEW</p>
+                <h1>Student Dashboard</h1>
+                <p class="subtitle">Manage your campus records in one place.</p>
+            </div>
+            <div class="date-label">● Admin Panel</div>
         </header>
 
-        <!-- Student form section -->
-        <section class="card">
-            <h2 id="formTitle">Add Student</h2>
+        <section class="stats">
+            <div class="stat-card purple">
+                <div class="stat-icon">♙</div>
+                <p>Total Students</p>
+                <h2 id="totalStudents">0</h2>
+                <small>Registered students</small>
+            </div>
 
-            <form id="studentForm">
-                <div class="form-group">
+            <div class="stat-card blue">
+                <div class="stat-icon">▤</div>
+                <p>Departments</p>
+                <h2 id="totalDepartments">0</h2>
+                <small>Unique departments</small>
+            </div>
+
+            <div class="stat-card green">
+                <div class="stat-icon">✓</div>
+                <p>System Status</p>
+                <h2>Active</h2>
+                <small>Records stored locally</small>
+            </div>
+        </section>
+
+        <section class="workspace">
+            <div class="panel form-panel" id="student-form">
+                <div class="panel-heading">
+                    <div>
+                        <span class="section-tag">STUDENT DETAILS</span>
+                        <h2 id="formTitle">Register Student</h2>
+                    </div>
+                    <span class="heading-icon">＋</span>
+                </div>
+
+                <form id="studentForm">
                     <label for="rollNumber">Roll Number</label>
-                    <input
-                        type="text"
-                        id="rollNumber"
-                        placeholder="Enter roll number"
-                        maxlength="30"
-                        required
-                    >
-                </div>
+                    <input type="text" id="rollNumber"
+                           placeholder="e.g. MCA101" required>
 
-                <div class="form-group">
-                    <label for="studentName">Student Name</label>
-                    <input
-                        type="text"
-                        id="studentName"
-                        placeholder="Enter student name"
-                        maxlength="100"
-                        required
-                    >
-                </div>
+                    <label for="studentName">Full Name</label>
+                    <input type="text" id="studentName"
+                           placeholder="Enter student's name" required>
 
-                <div class="form-group">
                     <label for="department">Department</label>
-                    <input
-                        type="text"
-                        id="department"
-                        placeholder="e.g. MCA, BCA, CSE"
-                        maxlength="100"
-                        required
-                    >
-                </div>
+                    <select id="department" required>
+                        <option value="">Choose department</option>
+                        <option value="MCA">MCA</option>
+                        <option value="MBA">MBA</option>
+                        <option value="CSE">CSE</option>
+                        <option value="ECE">ECE</option>
+                        <option value="EEE">EEE</option>
+                        <option value="Civil">Civil</option>
+                        <option value="Other">Other</option>
+                    </select>
 
-                <div class="button-group">
-                    <button type="submit" id="submitButton">
-                        Add Student
-                    </button>
-
-                    <button
-                        type="button"
-                        id="cancelButton"
-                        class="secondary-button"
-                        hidden
-                    >
-                        Cancel Edit
-                    </button>
-                </div>
-
-                <p id="message" role="status" aria-live="polite"></p>
-            </form>
-        </section>
-
-        <!-- Student records table -->
-        <section class="card">
-            <div class="table-heading">
-                <h2>Student Records</h2>
-                <span id="recordCount">Total Students: 0</span>
+                    <div class="form-actions">
+                        <button type="submit" id="submitBtn" class="primary-btn">
+                            Save Student
+                        </button>
+                        <button type="button" id="cancelBtn" class="secondary-btn"
+                                hidden>Cancel</button>
+                    </div>
+                    <p id="message" role="status"></p>
+                </form>
             </div>
 
-            <div class="table-wrapper">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Roll Number</th>
-                            <th>Student Name</th>
-                            <th>Department</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
+            <div class="panel records-panel" id="records">
+                <div class="panel-heading records-heading">
+                    <div>
+                        <span class="section-tag">DATABASE</span>
+                        <h2>Student Directory</h2>
+                    </div>
+                    <span class="record-count" id="recordCount">0 records</span>
+                </div>
 
-                    <tbody id="studentTableBody">
-                        <!-- JavaScript inserts student records here -->
-                    </tbody>
-                </table>
+                <input type="search" id="searchInput"
+                       class="search-input"
+                       placeholder="Search by name, roll number, or department...">
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ROLL NO.</th>
+                                <th>STUDENT</th>
+                                <th>DEPARTMENT</th>
+                                <th>ACTIONS</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentTable">
+                            <tr>
+                                <td colspan="4" class="empty">
+                                    No records yet. Register your first student!
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="table-note">Student information is saved in this browser.</p>
             </div>
         </section>
 
-        <footer>
-            <p>Student Record Management System | HTML, CSS and JavaScript</p>
-        </footer>
-
-    </div>
+        <footer>CampusTrack Student Management • HTML, CSS & JavaScript</footer>
+    </main>
 
 </body>
 </html>
